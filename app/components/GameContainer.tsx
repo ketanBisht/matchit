@@ -13,11 +13,14 @@ type Theme = 'light' | 'dark';
 const TOTAL_ROUNDS = 5;
 const SHOW_MS = 3000;
 
+// ─── Typed easing constants (Framer Motion requires specific tuple types) ───
+const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
 // ─── Animation Variants ───────────────────────────────
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16,1,0.3,1] } },
-  exit:   { opacity: 0, y: -16, transition: { duration: 0.3, ease: 'easeIn' } },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE_OUT } },
+  exit:   { opacity: 0, y: -16, transition: { duration: 0.3, ease: 'easeIn' as const } },
 };
 
 const stagger = {
@@ -27,7 +30,7 @@ const stagger = {
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.88 },
-  show:   { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.16,1,0.3,1] } },
+  show:   { opacity: 1, scale: 1, transition: { duration: 0.5, ease: EASE_OUT } },
 };
 
 // ─── Letter animation for the hero title ───────────────
@@ -35,7 +38,7 @@ const letterVariant = {
   hidden: { opacity: 0, y: 40 },
   show:   (i: number) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.6, ease: [0.16,1,0.3,1], delay: i * 0.06 },
+    transition: { duration: 0.6, ease: EASE_OUT, delay: i * 0.06 },
   }),
 };
 
