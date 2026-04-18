@@ -4,7 +4,7 @@
 
 ![matchIT Hero](app/icon.svg)
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - **Kernel**: [Next.js 16 (App Router)](https://nextjs.org/)
 - **Runtime**: [React 19](https://react.dev/)
@@ -14,7 +14,7 @@
 
 ---
 
-## 🛠️ Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 20+
@@ -42,7 +42,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 - `app/components/`: Core UI components.
   - `GameContainer.tsx`: The primary state machine managing game phases (Start, Study, Match, Results).
@@ -55,7 +55,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ---
 
-## 🎓 For Novice Developers
+##  For Novice Developers
 
 If you are just starting out, MatchIt is a great way to learn:
 
@@ -66,7 +66,7 @@ If you are just starting out, MatchIt is a great way to learn:
 
 ---
 
-## 🎨 For Contributors
+##  For Contributors
 
 Looking to expand the game? Here are some ideas:
 
@@ -77,7 +77,7 @@ Looking to expand the game? Here are some ideas:
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
