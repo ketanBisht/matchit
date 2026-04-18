@@ -10,30 +10,23 @@ export const getRandomColor = (): Color => ({
   b: Math.floor(Math.random() * 256),
 });
 
+const colorDistance = (a: Color, b: Color): number => {
+  const dr = a.r - b.r;
+  const dg = a.g - b.g;
+  const db = a.b - b.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+};
+
+const MAX_DISTANCE = Math.sqrt(255 * 255 * 3);
+
 export const calculateScore = (target: Color, match: Color): number => {
-  const dr = target.r - match.r;
-  const dg = target.g - match.g;
-  const db = target.b - match.b;
-  
-  const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-  const maxDistance = Math.sqrt(255 * 255 + 255 * 255 + 255 * 255);
-  
-  // Score is 100 at 0 distance, 0 at max distance
-  // Using a power function to make it more rewarding for close matches
-  const linearScore = 1 - distance / maxDistance;
-  const weight = 2.5; // Slightly increased weight for more challenge
-  const curvedScore = Math.pow(linearScore, weight);
-  
-  return Math.round(curvedScore * 100);
+  const linear = 1 - colorDistance(target, match) / MAX_DISTANCE;
+  return Math.round(linear * 100);
 };
 
 export const getMatchPercentage = (target: Color, match: Color): number => {
-  const dr = target.r - match.r;
-  const dg = target.g - match.g;
-  const db = target.b - match.b;
-  const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-  const maxDistance = Math.sqrt(255 * 255 + 255 * 255 + 255 * 255);
-  return Math.round((1 - distance / maxDistance) * 100);
+  const linear = 1 - colorDistance(target, match) / MAX_DISTANCE;
+  return Math.round(linear * 100);
 };
 
 export const colorToRgb = (color: Color): string => 
