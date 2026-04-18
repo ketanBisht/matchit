@@ -63,75 +63,92 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, disab
   const handleY = `calc(50% + ${Math.sin((hsv.h-180)*Math.PI/180)*hsv.s*50}%)`;
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-xs fade-in">
+    <div className="fade-in w-full max-w-2xl">
+      {/* Responsive: side-by-side on md+, stacked on mobile */}
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
 
-      {/* ── Disk ── */}
-      <div
-        className="relative rounded-full cursor-crosshair select-none"
-        style={{ width: 280, height: 280, boxShadow: '0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1)' }}
-      >
-        <canvas
-          ref={diskRef}
-          width={280} height={280}
-          className="rounded-full block w-full h-full"
-          onMouseDown={e => { dragging.current=true; pick(e.clientX,e.clientY); }}
-          onTouchStart={e => { dragging.current=true; const t=e.touches[0]; pick(t.clientX,t.clientY); }}
-          onTouchMove={e => { e.preventDefault(); const t=e.touches[0]; pick(t.clientX,t.clientY); }}
-        />
-        {/* Handle */}
+        {/* ── HS Disk ── */}
         <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 20, height: 20,
-            left: handleX, top: handleY,
-            transform: 'translate(-50%,-50%)',
-            borderRadius: '50%',
-            border: '2.5px solid white',
-            boxShadow: '0 0 0 1.5px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.3)',
-            backgroundColor: colorToRgb(color),
-            transition: 'background-color 0.05s',
-          }}
-        />
-      </div>
-
-      {/* ── Live Preview ── */}
-      <div
-        className="card w-full flex items-center gap-4 p-4"
-        style={{ borderRadius: '1.25rem' }}
-      >
-        <div
-          style={{
-            width: 56, height: 56, borderRadius: 12, flexShrink: 0,
-            backgroundColor: colorToRgb(color),
-            boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
-            transition: 'background-color 0.08s',
-          }}
-        />
-        <div className="flex flex-col gap-0.5">
-          <p className="font-mono font-bold text-xl tracking-tight" style={{ color: 'var(--fg)' }}>
-            {colorToHex(color).toUpperCase()}
-          </p>
-          <p className="text-xs" style={{ color: 'var(--fg2)' }}>
-            rgb({color.r}, {color.g}, {color.b})
-          </p>
-        </div>
-      </div>
-
-      {/* ── Brightness ── */}
-      <div className="w-full space-y-2.5">
-        <div className="flex justify-between items-center">
-          <span className="text-xs font-semibold" style={{ color: 'var(--fg2)' }}>Brightness</span>
-          <span className="font-mono text-xs font-bold" style={{ color: 'var(--fg)' }}>{Math.round(hsv.v*100)}%</span>
-        </div>
-        <div className="relative">
-          <input
-            type="range" min="0" max="1" step="0.005" value={hsv.v}
-            onChange={e => setV(parseFloat(e.target.value))}
-            className="w-full relative z-10"
-            disabled={disabled}
-            style={{ background: `linear-gradient(to right, #000 0%, ${colorToRgb(hsvToRgb(hsv.h,hsv.s,1))} 100%)`, height: 6, borderRadius: 100 }}
+          className="relative rounded-full cursor-crosshair select-none shrink-0"
+          style={{ width: 300, height: 300, boxShadow: '0 8px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1)' }}
+        >
+          <canvas
+            ref={diskRef}
+            width={300} height={300}
+            className="rounded-full block w-full h-full"
+            onMouseDown={e => { dragging.current=true; pick(e.clientX,e.clientY); }}
+            onTouchStart={e => { dragging.current=true; const t=e.touches[0]; pick(t.clientX,t.clientY); }}
+            onTouchMove={e => { e.preventDefault(); const t=e.touches[0]; pick(t.clientX,t.clientY); }}
+          />
+          {/* Handle */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 22, height: 22,
+              left: handleX, top: handleY,
+              transform: 'translate(-50%,-50%)',
+              borderRadius: '50%',
+              border: '2.5px solid white',
+              boxShadow: '0 0 0 1.5px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.3)',
+              backgroundColor: colorToRgb(color),
+              transition: 'background-color 0.05s',
+            }}
           />
         </div>
+
+        {/* ── Right panel: preview + brightness ── */}
+        <div className="flex flex-col gap-5 flex-1 w-full">
+
+          {/* Live Preview — larger card */}
+          <div className="card flex items-center gap-5 p-5" style={{ borderRadius: '1.5rem' }}>
+            {/* Big swatch with color-matched glow */}
+            <div
+              style={{
+                width: 90, height: 90,
+                borderRadius: 18,
+                flexShrink: 0,
+                backgroundColor: colorToRgb(color),
+                boxShadow: `0 8px 28px rgba(${color.r},${color.g},${color.b},0.45)`,
+                transition: 'background-color 0.08s, box-shadow 0.08s',
+              }}
+            />
+            <div className="flex flex-col gap-2">
+              <p className="font-mono font-black text-2xl tracking-tight" style={{ color: 'var(--fg)' }}>
+                {colorToHex(color).toUpperCase()}
+              </p>
+              <p className="text-sm font-medium" style={{ color: 'var(--fg2)' }}>
+                rgb({color.r}, {color.g}, {color.b})
+              </p>
+              {/* R G B mini bars */}
+              <div className="flex gap-3 mt-1">
+                {([['r','#ef4444'],['g','#22c55e'],['b','#3b82f6']] as const).map(([ch, hue]) => (
+                  <div key={ch} className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                      <div style={{ width: `${(color[ch]/255)*100}%`, height: '100%', background: hue, borderRadius: 100 }} />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--fg3)' }}>{ch} {color[ch]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Brightness slider */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold" style={{ color: 'var(--fg2)' }}>Brightness</span>
+              <span className="font-mono text-xs font-bold" style={{ color: 'var(--fg)' }}>{Math.round(hsv.v*100)}%</span>
+            </div>
+            <input
+              type="range" min="0" max="1" step="0.005" value={hsv.v}
+              onChange={e => setV(parseFloat(e.target.value))}
+              className="w-full"
+              disabled={disabled}
+              style={{ background: `linear-gradient(to right, #000 0%, ${colorToRgb(hsvToRgb(hsv.h,hsv.s,1))} 100%)`, height: 6, borderRadius: 100 }}
+            />
+          </div>
+        </div>
+
       </div>
     </div>
   );
