@@ -7,23 +7,18 @@ interface ColorDisplayProps {
   showDetails?: boolean;
 }
 
-export const ColorDisplay: React.FC<ColorDisplayProps> = ({ color, label, showDetails = false }) => {
-  const rgb = colorToRgb(color);
-  
-  return (
-    <div className="flex flex-col items-center gap-3 animate-fade-in">
-      <div 
-        className="w-32 h-32 md:w-48 md:h-48 rounded-2xl shadow-2xl glass transition-colors duration-500 overflow-hidden"
-        style={{ backgroundColor: rgb }}
-      >
-        <div className="w-full h-full bg-linear-to-br from-white/10 to-transparent" />
-      </div>
-      <div className="text-center">
-        <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">{label}</p>
-        {showDetails && (
-          <p className="font-mono text-lg text-white mt-1">{colorToHex(color)}</p>
-        )}
-      </div>
-    </div>
-  );
-};
+export const ColorDisplay: React.FC<ColorDisplayProps> = ({ color, label, showDetails = false }) => (
+  <div className="flex flex-col items-center gap-3">
+    <div
+      className="w-36 h-36 md:w-44 md:h-44 rounded-2xl"
+      style={{
+        backgroundColor: colorToRgb(color),
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+      }}
+    />
+    <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--fg2)' }}>{label}</p>
+    {showDetails && (
+      <p className="font-mono text-sm font-bold" style={{ color: 'var(--fg)' }}>{colorToHex(color).toUpperCase()}</p>
+    )}
+  </div>
+);

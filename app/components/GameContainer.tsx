@@ -1,236 +1,369 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Color, getRandomColor, calculateScore, colorToRgb, getMatchPercentage } from '../lib/game-logic';
 import { ColorDisplay } from './ColorDisplay';
 import { ColorPicker } from './ColorPicker';
+import { Starburst, BigSpark } from './DoodleElements';
 
 type GameState = 'START' | 'SHOWING' | 'MATCHING' | 'RESULT' | 'FINAL';
+type Theme = 'light' | 'dark';
 
-const ROUNDS_LIMIT = 5;
-const SHOW_DURATION = 3000;
+const TOTAL_ROUNDS = 5;
+const SHOW_MS = 3000;
+
+// ─── Animation Variants ───────────────────────────────
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16,1,0.3,1] } },
+  exit:   { opacity: 0, y: -16, transition: { duration: 0.3, ease: 'easeIn' } },
+};
+
+const stagger = {
+  hidden: {},
+  show:   { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.88 },
+  show:   { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.16,1,0.3,1] } },
+};
+
+// ─── Letter animation for the hero title ───────────────
+const letterVariant = {
+  hidden: { opacity: 0, y: 40 },
+  show:   (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.6, ease: [0.16,1,0.3,1], delay: i * 0.06 },
+  }),
+};
 
 export const GameContainer: React.FC = () => {
-  const [gameState, setGameState] = useState<GameState>('START');
-  const [round, setRound] = useState(1);
-  const [targetColor, setTargetColor] = useState<Color>({ r: 0, g: 0, b: 0 });
-  const [userColor, setUserColor] = useState<Color>({ r: 127, g: 127, b: 127 });
+  const [state,  setState]  = useState<GameState>('START');
+  const [round,  setRound]  = useState(1);
+  const [target, setTarget] = useState<Color>({ r:0, g:0, b:0 });
+  const [guess,  setGuess]  = useState<Color>({ r:127, g:127, b:127 });
   const [scores, setScores] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(SHOW_DURATION / 1000);
-  const [showRules, setShowRules] = useState(false);
+  const [timer,  setTimer]  = useState(SHOW_MS / 1000);
+  const [rules,  setRules]  = useState(false);
+  const [theme,  setTheme]  = useState<Theme>('light');
 
-  const startNewRound = useCallback(() => {
-    const nextColor = getRandomColor();
-    setTargetColor(nextColor);
-    setUserColor({ r: 127, g: 127, b: 127 });
-    setGameState('SHOWING');
-    setTimeLeft(SHOW_DURATION / 1000);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  const newRound = useCallback(() => {
+    setTarget(getRandomColor());
+    setGuess({ r:127, g:127, b:127 });
+    setState('SHOWING');
+    setTimer(SHOW_MS / 1000);
   }, []);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (gameState === 'SHOWING' && timeLeft > 0) {
-      timer = setTimeout(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (gameState === 'SHOWING' && timeLeft === 0) {
-      setGameState('MATCHING');
-    }
-    return () => clearTimeout(timer);
-  }, [gameState, timeLeft]);
+    let t: NodeJS.Timeout;
+    if (state === 'SHOWING' && timer > 0)  t = setTimeout(() => setTimer(p=>p-1), 1000);
+    if (state === 'SHOWING' && timer === 0) setState('MATCHING');
+    return () => clearTimeout(t);
+  }, [state, timer]);
 
-  const handleMatch = () => {
-    const score = calculateScore(targetColor, userColor);
-    setScores(prev => [...prev, score]);
-    setGameState('RESULT');
-  };
+  const submit = () => { setScores(p=>[...p, calculateScore(target, guess)]); setState('RESULT'); };
+  const next   = () => { if (round < TOTAL_ROUNDS) { setRound(p=>p+1); newRound(); } else setState('FINAL'); };
+  const reset  = () => { setRound(1); setScores([]); setState('START'); };
 
-  const nextAction = () => {
-    if (round < ROUNDS_LIMIT) {
-      setRound(prev => prev + 1);
-      startNewRound();
-    } else {
-      setGameState('FINAL');
-    }
-  };
-
-  const resetGame = () => {
-    setRound(1);
-    setScores([]);
-    setGameState('START');
-  };
-
-  const totalScore = scores.reduce((a, b) => a + b, 0);
-  const avgScore = scores.length > 0 ? (totalScore / scores.length).toFixed(1) : '0';
-  const currentMatchPercent = getMatchPercentage(targetColor, userColor);
+  const total = scores.reduce((a,b)=>a+b, 0);
+  const avg   = scores.length ? Math.round(total/scores.length) : 0;
+  const match = getMatchPercentage(target, guess);
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 w-full max-w-5xl min-h-[600px] gap-8">
-      {gameState === 'START' && (
-        <div className="text-center animate-fade-in space-y-12">
-          {!showRules ? (
-            <div className="space-y-12">
-              <div className="space-y-4">
-                <h1 className="text-7xl md:text-8xl font-black text-white tracking-tighter">
-                  MATCH<span className="text-blue-500">IT.</span>
-                </h1>
-                <p className="text-slate-400 text-lg max-w-md mx-auto font-medium">
-                  Test your color memory. Master your vision.
-                </p>
-              </div>
-              <div className="flex flex-col gap-4">
-                <button 
-                  onClick={startNewRound}
-                  className="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-black text-2xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_50px_rgba(37,99,235,0.4)]"
-                >
-                  START GAME
-                </button>
-                <button 
-                  onClick={() => setShowRules(true)}
-                  className="text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-[0.3em]"
-                >
-                  How to Play?
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* RULES VIEW */
-            <div className="glass p-8 md:p-12 rounded-[3rem] border border-white/10 shadow-2xl animate-slide-up max-w-lg">
-              <h2 className="text-3xl font-black text-white mb-8 tracking-tighter italic">GAME RULES</h2>
-              <ul className="text-left space-y-6 mb-10">
-                <li className="flex gap-4">
-                  <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 font-black text-white">1</span>
-                  <p className="text-slate-300 font-medium">Memorize the <span className="text-white font-bold">Target Color</span> shown for 3 seconds.</p>
-                </li>
-                <li className="flex gap-4">
-                  <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 font-black text-white">2</span>
-                  <p className="text-slate-300 font-medium">Recreate it using the <span className="text-white font-bold">Color Wheel</span> and <span className="text-white font-bold">Brightness Slider</span>.</p>
-                </li>
-                <li className="flex gap-4">
-                  <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 font-black text-white">3</span>
-                  <p className="text-slate-300 font-medium">The closer your match, the <span className="text-white font-bold">Higher your score</span>.</p>
-                </li>
-                <li className="flex gap-4">
-                  <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 font-black text-white">4</span>
-                  <p className="text-slate-300 font-medium">Complete <span className="text-white font-bold">5 Rounds</span> to see your total and average accuracy.</p>
-                </li>
-              </ul>
-              <button 
-                onClick={() => setShowRules(false)}
-                className="w-full py-4 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all text-lg"
-              >
-                GOT IT
-              </button>
-            </div>
+    <div className="flex flex-col min-h-screen" style={{ background:'var(--bg)' }}>
+
+      {/* ── Top bar ── */}
+      <motion.header
+        initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }}
+        transition={{ duration:0.5, ease:'easeOut' }}
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4"
+        style={{ background:'var(--bg)', borderBottom:'1px solid var(--border)', backdropFilter:'blur(16px)' }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-black text-lg tracking-tight">matchIT.</span>
+          <span className="tag">Color Memory</span>
+        </div>
+        <button className="btn btn-ghost text-xs px-4 py-2" onClick={() => setTheme(p=>p==='light'?'dark':'light')}>
+          {theme==='light' ? '🌙 Dark' : '☀️ Light'}
+        </button>
+      </motion.header>
+
+      {/* ── Content ── */}
+      <main className="flex-1 flex items-center justify-center px-6 pt-20 pb-12">
+        <AnimatePresence mode="wait">
+
+          {/* ════════ START ════════ */}
+          {state === 'START' && (
+            <motion.div key="start" variants={stagger} initial="hidden" animate="show" exit="exit"
+              className="flex flex-col items-center text-center gap-10 max-w-lg w-full">
+              {!rules ? (
+                <>
+                  {/* Floating accent sparks */}
+                  <motion.div className="absolute pointer-events-none select-none"
+                    style={{ top:'18%', left:'15%' }}
+                    animate={{ rotate:[0,15,0,-15,0], scale:[1,1.15,1] }}
+                    transition={{ duration:6, repeat:Infinity, ease:'easeInOut' }}>
+                    <BigSpark className="w-8 h-8" style={{ color:'var(--accent)', opacity:0.35 } as React.CSSProperties} />
+                  </motion.div>
+                  <motion.div className="absolute pointer-events-none select-none"
+                    style={{ top:'22%', right:'16%' }}
+                    animate={{ rotate:[0,-12,0,12,0], scale:[1,1.2,1] }}
+                    transition={{ duration:5, repeat:Infinity, ease:'easeInOut', delay:0.8 }}>
+                    <Starburst className="w-6 h-6" style={{ color:'var(--accent)', opacity:0.3 } as React.CSSProperties} />
+                  </motion.div>
+                  <motion.div className="absolute pointer-events-none select-none"
+                    style={{ bottom:'20%', left:'18%' }}
+                    animate={{ rotate:[0,20,0], scale:[1,1.1,1] }}
+                    transition={{ duration:7, repeat:Infinity, ease:'easeInOut', delay:1.5 }}>
+                    <Starburst className="w-5 h-5" style={{ color:'var(--fg)', opacity:0.12 } as React.CSSProperties} />
+                  </motion.div>
+
+                  {/* Hero title — letter-by-letter */}
+                  <div className="overflow-hidden">
+                    <div className="flex items-end justify-center" style={{ fontSize:'clamp(5.5rem,14vw,9rem)' }}>
+                      {'match'.split('').map((l,i)=>(
+                        <motion.span key={i} custom={i} variants={letterVariant}
+                          className="font-black tracking-[-0.04em] leading-none" style={{ color:'var(--fg)' }}>
+                          {l}
+                        </motion.span>
+                      ))}
+                      <motion.span custom={5} variants={letterVariant}
+                        className="font-black leading-none"
+                        style={{ color:'var(--accent)', marginLeft:2 }}>
+                        .
+                      </motion.span>
+                    </div>
+                  </div>
+
+                  {/* Subtitle */}
+                  <motion.p variants={fadeUp}
+                    className="text-base font-medium leading-relaxed max-w-xs"
+                    style={{ color:'var(--fg2)' }}>
+                    Memorize a color in 3 seconds,<br/>then recreate it from memory.
+                  </motion.p>
+
+                  {/* Animated color swatches preview */}
+                  <motion.div variants={fadeUp} className="flex items-center gap-3">
+                    {['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899'].map((c,i)=>(
+                      <motion.div key={c}
+                        animate={{ y: [0, i%2===0?-6:6, 0] }}
+                        transition={{ duration:2.5+i*0.3, repeat:Infinity, ease:'easeInOut', delay:i*0.15 }}
+                        style={{
+                          width: 28, height: 28, borderRadius:'50%', backgroundColor: c,
+                          boxShadow:`0 4px 12px ${c}60`,
+                        }}
+                      />
+                    ))}
+                  </motion.div>
+
+                  {/* CTA */}
+                  <motion.div variants={fadeUp} className="flex flex-col items-center gap-4 w-full">
+                    <motion.button onClick={newRound} className="btn btn-primary w-full max-w-xs py-4 text-base font-semibold"
+                      whileHover={{ scale:1.03, y:-2 }} whileTap={{ scale:0.97 }}
+                      transition={{ type:'spring', stiffness:400, damping:20 }}>
+                      Start Game
+                    </motion.button>
+                    <motion.button onClick={()=>setRules(true)} className="btn btn-ghost text-sm px-6 py-2.5 font-medium"
+                      whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}>
+                      Read the rules
+                    </motion.button>
+                  </motion.div>
+                </>
+              ) : (
+                /* Rules */
+                <motion.div key="rules" variants={scaleIn} initial="hidden" animate="show" exit="exit"
+                  className="card w-full p-8 text-left">
+                  <h2 className="font-black text-2xl tracking-tight mb-6">How to Play</h2>
+                  <ol className="space-y-5 mb-8">
+                    {[
+                      'A random color appears on screen for exactly 3 seconds.',
+                      'After it disappears, use the color wheel and brightness slider to recreate it from memory.',
+                      'Hit "Confirm" — your score (0–100) is based on how close your colors are.',
+                      'Play 5 rounds. Total and average accuracy shown at the end.',
+                    ].map((r,i)=>(
+                      <motion.li key={i} custom={i} variants={letterVariant} className="flex gap-4">
+                        <span className="font-mono font-black text-lg leading-none shrink-0" style={{ color:'var(--accent)' }}>0{i+1}</span>
+                        <p className="text-sm font-medium leading-relaxed" style={{ color:'var(--fg2)' }}>{r}</p>
+                      </motion.li>
+                    ))}
+                  </ol>
+                  <motion.button onClick={()=>setRules(false)} className="btn btn-primary w-full py-3.5 font-semibold"
+                    whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}>
+                    Got it
+                  </motion.button>
+                </motion.div>
+              )}
+            </motion.div>
           )}
-        </div>
-      )}
 
-      {(gameState === 'SHOWING' || gameState === 'MATCHING' || gameState === 'RESULT') && (
-        <div className="w-full flex flex-col items-center gap-8 md:gap-12 animate-fade-in">
-          {/* Header Info */}
-          <div className="flex justify-between w-full max-w-2xl px-2 relative z-20">
-            <div className="glass px-5 py-3 rounded-2xl border border-white/10">
-              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Round</span>
-              <p className="text-white font-mono text-2xl leading-none mt-1">{round} / {ROUNDS_LIMIT}</p>
-            </div>
-            <div className="glass px-5 py-3 rounded-2xl border border-white/10">
-              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total</span>
-              <p className="text-white font-mono text-2xl leading-none mt-1">{totalScore}</p>
-            </div>
-          </div>
+          {/* ════════ IN-GAME ════════ */}
+          {(state==='SHOWING'||state==='MATCHING'||state==='RESULT') && (
+            <motion.div key="game" variants={stagger} initial="hidden" animate="show" exit="exit"
+              className="flex flex-col items-center gap-10 w-full max-w-xl">
 
-          <div className="w-full flex flex-col items-center gap-8">
-            {gameState === 'RESULT' ? (
-              /* COMPARISON VIEW */
-              <div className="flex flex-col items-center gap-10 w-full translate-y-[-20px]">
-                <div className="flex flex-col md:flex-row gap-4 md:gap-2 items-center justify-center w-full">
-                  <div className="flex-1 flex flex-col items-center gap-4">
-                    <ColorDisplay color={targetColor} label="Target" showDetails />
-                  </div>
-                  <div className="flex flex-col items-center justify-center p-4 glass rounded-full aspect-square w-20 h-20 md:w-28 md:h-28 z-10 mx-[-30px] border border-white/20 shadow-2xl backdrop-blur-xl">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Match</span>
-                    <span className="text-xl md:text-3xl font-black text-white">{currentMatchPercent}%</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-4">
-                    <ColorDisplay color={userColor} label="Yours" showDetails />
-                  </div>
+              {/* Round / score bar */}
+              <motion.div variants={fadeUp}
+                className="card flex items-center gap-6 px-7 py-4 self-stretch" style={{ borderRadius:100 }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color:'var(--fg3)' }}>Round</p>
+                  <p className="font-mono font-black text-2xl leading-none">
+                    {round}<span className="font-normal text-base opacity-30"> / {TOTAL_ROUNDS}</span>
+                  </p>
                 </div>
-
-                <div className="glass p-10 rounded-[3rem] text-center animate-slide-up w-full max-w-sm border border-white/10 shadow-2xl">
-                  <p className="text-slate-500 text-xs font-black uppercase tracking-[0.2em] mb-2">Round Score</p>
-                  <p className="text-8xl font-black text-blue-500 mb-8 tracking-tighter">{scores[scores.length - 1]}</p>
-                  <button 
-                    onClick={nextAction}
-                    className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all hover:scale-[1.02] active:scale-95 shadow-lg text-xl"
-                  >
-                    {round === ROUNDS_LIMIT ? 'See Final Stats' : 'Next Round'}
-                  </button>
+                <div className="flex-1 flex items-center justify-center">
+                  <motion.div animate={{ rotate:360 }} transition={{ duration:20, repeat:Infinity, ease:'linear' }}>
+                    <Starburst className="w-5 h-5" style={{ color:'var(--accent)', opacity:0.5 } as React.CSSProperties} />
+                  </motion.div>
                 </div>
-              </div>
-            ) : (
-              /* PLAY VIEW - Shifted up by removing Memory Mode box */
-              <div className="flex flex-col items-center gap-8 w-full translate-y-[-20px] md:translate-y-[-40px]">
-                <div className="relative">
-                  {gameState === 'SHOWING' && (
-                    <div className="relative flex flex-col items-center gap-6">
-                      <div className="scale-110 md:scale-125">
-                        <ColorDisplay color={targetColor} label="Target Color" />
-                      </div>
-                      <div className="absolute -top-6 -right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl shadow-[0_0_30px_rgba(37,99,235,0.6)] animate-bounce">
-                        {timeLeft}
-                      </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color:'var(--fg3)' }}>Score</p>
+                  <p className="font-mono font-black text-2xl leading-none" style={{ color:'var(--accent)' }}>{total}</p>
+                </div>
+              </motion.div>
+
+              {/* SHOWING */}
+              {state==='SHOWING' && (
+                <motion.div variants={fadeUp} className="flex flex-col items-center gap-8">
+                  <p className="text-sm font-medium" style={{ color:'var(--fg2)' }}>Study this color carefully…</p>
+                  <motion.div className="relative" animate={{ scale:[1,1.02,1] }} transition={{ duration:2, repeat:Infinity }}>
+                    <ColorDisplay color={target} label="" />
+                    <motion.div
+                      key={timer}
+                      initial={{ scale:1.4, opacity:0 }} animate={{ scale:1, opacity:1 }}
+                      className="absolute -top-3 -right-3 w-12 h-12 rounded-full flex items-center justify-center font-mono font-black text-xl"
+                      style={{ background:'var(--fg)', color:'var(--bg)', boxShadow:'0 4px 20px rgba(0,0,0,0.2)' }}>
+                      {timer}
+                    </motion.div>
+                  </motion.div>
+                  <p className="text-xs font-medium" style={{ color:'var(--fg3)' }}>Disappears when the counter hits 0</p>
+                </motion.div>
+              )}
+
+              {/* MATCHING */}
+              {state==='MATCHING' && (
+                <motion.div variants={stagger} initial="hidden" animate="show"
+                  className="flex flex-col items-center gap-8 w-full">
+                  <motion.p variants={fadeUp} className="text-sm font-medium" style={{ color:'var(--fg2)' }}>
+                    Now recreate it from memory…
+                  </motion.p>
+                  <motion.div variants={scaleIn}>
+                    <ColorPicker color={guess} onChange={setGuess} />
+                  </motion.div>
+                  <motion.button variants={fadeUp} onClick={submit}
+                    className="btn btn-accent px-12 py-4 text-base font-semibold w-full max-w-xs"
+                    whileHover={{ scale:1.04, y:-2 }} whileTap={{ scale:0.96 }}>
+                    Confirm Match
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {/* RESULT */}
+              {state==='RESULT' && (
+                <motion.div variants={stagger} initial="hidden" animate="show"
+                  className="flex flex-col items-center gap-10 w-full">
+                  <motion.div variants={fadeUp}
+                    className="card w-full p-8 flex flex-col md:flex-row items-center gap-8 justify-center">
+                    <ColorDisplay color={target} label="Target" showDetails />
+                    <div className="flex flex-col items-center gap-2">
+                      <motion.div
+                        initial={{ scale:0 }} animate={{ scale:1 }}
+                        transition={{ type:'spring', stiffness:300, damping:18, delay:0.3 }}
+                        className="px-6 py-4 rounded-2xl text-center"
+                        style={{ background:'var(--accent-bg)', border:'1px solid var(--accent)' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color:'var(--accent)' }}>Match</p>
+                        <p className="font-mono font-black text-4xl" style={{ color:'var(--accent)' }}>{match}%</p>
+                      </motion.div>
                     </div>
-                  )}
+                    <ColorDisplay color={guess} label="Yours" showDetails />
+                  </motion.div>
+
+                  <motion.div variants={scaleIn} className="card w-full max-w-xs p-8 text-center">
+                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color:'var(--fg3)' }}>Round Score</p>
+                    <motion.p
+                      initial={{ scale:0.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
+                      transition={{ type:'spring', stiffness:300, damping:18, delay:0.2 }}
+                      className="font-mono font-black leading-none mb-6" style={{ fontSize:'5rem', color:'var(--fg)' }}>
+                      {scores[scores.length-1]}
+                    </motion.p>
+                    <motion.button onClick={next} className="btn btn-primary w-full py-3.5 font-semibold"
+                      whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}>
+                      {round===TOTAL_ROUNDS ? 'See Results' : 'Next Round →'}
+                    </motion.button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ════════ FINAL ════════ */}
+          {state==='FINAL' && (
+            <motion.div key="final" variants={stagger} initial="hidden" animate="show" exit="exit"
+              className="flex flex-col items-center gap-10 w-full max-w-xl text-center">
+              <motion.div variants={fadeUp} className="relative">
+                <motion.div
+                  animate={{ rotate:[0,10,-10,0], scale:[1,1.1,1] }}
+                  transition={{ duration:3, repeat:Infinity, ease:'easeInOut' }}
+                  className="absolute -top-8 -right-8 pointer-events-none">
+                  <BigSpark className="w-12 h-12" style={{ color:'var(--accent)', opacity:0.5 } as React.CSSProperties} />
+                </motion.div>
+                <span className="tag mb-4 inline-flex">Game complete</span>
+                <h2 className="font-black tracking-[-0.04em] leading-none"
+                  style={{ fontSize:'clamp(3rem,8vw,5rem)', color:'var(--fg)' }}>
+                  Exhibition.
+                </h2>
+                <p className="text-sm mt-2" style={{ color:'var(--fg2)' }}>{TOTAL_ROUNDS} rounds played</p>
+              </motion.div>
+
+              <motion.div variants={fadeUp} className="grid grid-cols-2 gap-4 w-full">
+                <div className="card p-6 text-center">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color:'var(--fg3)' }}>Total</p>
+                  <motion.p className="font-mono font-black text-5xl" style={{ color:'var(--fg)' }}
+                    initial={{ opacity:0, scale:0.6 }} animate={{ opacity:1, scale:1 }}
+                    transition={{ type:'spring', stiffness:300, delay:0.3 }}>
+                    {total}
+                  </motion.p>
                 </div>
+                <motion.div className="card p-6 text-center" style={{ background:'var(--accent)', border:'none' }}
+                  initial={{ opacity:0, scale:0.6 }} animate={{ opacity:1, scale:1 }}
+                  transition={{ type:'spring', stiffness:300, delay:0.45 }}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-2 text-white/70">Avg</p>
+                  <p className="font-mono font-black text-5xl text-white">{avg}%</p>
+                </motion.div>
+              </motion.div>
 
-                {gameState === 'MATCHING' && (
-                  <div className="w-full flex flex-col items-center gap-12 pt-4">
-                    <div className="scale-95 md:scale-105">
-                      <ColorPicker color={userColor} onChange={setUserColor} />
-                    </div>
-                    <button 
-                      onClick={handleMatch}
-                      className="px-20 py-6 bg-white text-black rounded-full font-black text-2xl transition-all hover:scale-110 active:scale-90 shadow-2xl hover:shadow-white/20 tracking-tighter"
-                    >
-                      CONFIRM MATCH
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              <motion.div variants={fadeUp} className="card w-full p-5">
+                <p className="text-xs font-bold uppercase tracking-widest mb-4 text-left" style={{ color:'var(--fg3)' }}>Round History</p>
+                <div className="flex gap-3">
+                  {scores.map((s,i)=>(
+                    <motion.div key={i} className="flex flex-col items-center gap-1.5 flex-1"
+                      initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
+                      transition={{ delay: 0.1 * i, type:'spring', stiffness:300 }}>
+                      <div className="w-full aspect-square rounded-xl flex items-center justify-center font-mono font-black text-xl"
+                        style={{ background:'var(--bg)', color:'var(--fg)' }}>
+                        {s}
+                      </div>
+                      <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color:'var(--fg3)' }}>R{i+1}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
 
-      {gameState === 'FINAL' && (
-        <div className="text-center animate-fade-in space-y-12 w-full max-w-xl">
-          <div className="space-y-3">
-            <h2 className="text-6xl md:text-8xl font-black text-white tracking-tighter italic uppercase">Victory!</h2>
-            <p className="text-slate-500 font-medium tracking-widest text-sm uppercase">Performance summary through {ROUNDS_LIMIT} rounds.</p>
-          </div>
+              <motion.button variants={fadeUp} onClick={reset}
+                className="btn btn-primary w-full max-w-xs py-4 font-semibold"
+                whileHover={{ scale:1.03, y:-2 }} whileTap={{ scale:0.97 }}>
+                Play Again
+              </motion.button>
+            </motion.div>
+          )}
 
-          <div className="grid grid-cols-2 gap-6 px-4">
-            <div className="glass p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors" />
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3 relative z-10">Total Points</p>
-              <p className="text-6xl md:text-7xl font-black text-white relative z-10 tracking-tighter">{totalScore}</p>
-            </div>
-            <div className="glass p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors" />
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3 relative z-10">Avg. Accuracy</p>
-              <p className="text-6xl md:text-7xl font-black text-blue-500 relative z-10 tracking-tighter text-glow">{avgScore}%</p>
-            </div>
-          </div>
-
-          <button 
-            onClick={resetGame}
-            className="w-full max-w-sm py-6 bg-blue-600 hover:bg-blue-500 text-white rounded-[2.5rem] font-black text-3xl transition-all shadow-[0_25px_60px_rgba(37,99,235,0.4)] hover:scale-[1.02] active:scale-95 mx-auto block tracking-tighter"
-          >
-            PLAY AGAIN
-          </button>
-        </div>
-      )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 };
