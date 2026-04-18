@@ -21,10 +21,19 @@ export const calculateScore = (target: Color, match: Color): number => {
   // Score is 100 at 0 distance, 0 at max distance
   // Using a power function to make it more rewarding for close matches
   const linearScore = 1 - distance / maxDistance;
-  const weight = 2; // Higher weight makes it harder to get high scores unless very close
+  const weight = 2.5; // Slightly increased weight for more challenge
   const curvedScore = Math.pow(linearScore, weight);
   
   return Math.round(curvedScore * 100);
+};
+
+export const getMatchPercentage = (target: Color, match: Color): number => {
+  const dr = target.r - match.r;
+  const dg = target.g - match.g;
+  const db = target.b - match.b;
+  const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+  const maxDistance = Math.sqrt(255 * 255 + 255 * 255 + 255 * 255);
+  return Math.round((1 - distance / maxDistance) * 100);
 };
 
 export const colorToRgb = (color: Color): string => 
@@ -42,6 +51,9 @@ export interface HSV {
 }
 
 export const hsvToRgb = (h: number, s: number, v: number): Color => {
+  // Normalize hue to be within [0, 360)
+  h = (h % 360 + 360) % 360;
+  
   const c = v * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = v - c;
