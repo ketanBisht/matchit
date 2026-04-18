@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MatchIt — Color Memory Challenge",
-  description: "Test your color memory. Memorize a color, then recreate it.",
+  title: "matchIT",
+  description: "Test your visual memory. Catch the color, match it, and master the spectrum.",
 };
 
 export default function RootLayout({
