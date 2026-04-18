@@ -103,7 +103,7 @@ export const GameContainer: React.FC = () => {
           {/* ════════ START ════════ */}
           {state === 'START' && (
             <motion.div key="start" variants={stagger} initial="hidden" animate="show" exit="exit"
-              className="flex flex-col lg:grid lg:grid-cols-[1.2fr_1fr] lg:items-start gap-12 lg:gap-32 w-full max-w-6xl px-4 lg:pt-12">
+              className={`flex flex-col w-full max-w-6xl px-4 ${rules ? 'items-center justify-center' : 'lg:grid lg:grid-cols-[1.2fr_1fr] lg:items-start lg:pt-12'} gap-12 lg:gap-32`}>
               
               {!rules ? (
                 <>
@@ -175,7 +175,7 @@ export const GameContainer: React.FC = () => {
               ) : (
                 /* Rules */
                 <motion.div key="rules" variants={scaleIn} initial="hidden" animate="show" exit="exit"
-                  className="card w-full p-8 text-left">
+                  className="card w-full max-w-md p-8 text-left">
                   <h2 className="font-black text-2xl tracking-tight mb-6">How to Play</h2>
                   <ol className="space-y-5 mb-8">
                     {[
