@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Color, getRandomColor, calculateScore, colorToRgb } from '../lib/game-logic';
 import { ColorDisplay } from './ColorDisplay';
-import { ColorSliders } from './ColorSliders';
+import { ColorPicker } from './ColorPicker';
 
 type GameState = 'START' | 'SHOWING' | 'MATCHING' | 'RESULT' | 'FINAL';
 
@@ -99,8 +99,19 @@ export const GameContainer: React.FC = () => {
 
           <div className="flex flex-col md:flex-row gap-8 md:gap-24 items-center justify-center">
             {/* Target Color */}
-            <div className={`relative ${gameState === 'MATCHING' ? 'opacity-20 transition-opacity' : 'opacity-100'}`}>
-              <ColorDisplay color={targetColor} label="Target Color" showDetails={gameState === 'RESULT'} />
+            <div className="relative">
+              {gameState === 'MATCHING' ? (
+                <div className="flex flex-col items-center gap-3 animate-fade-in">
+                  <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl glass flex items-center justify-center">
+                    <span className="text-4xl text-slate-600">?</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">Memory Mode</p>
+                  </div>
+                </div>
+              ) : (
+                <ColorDisplay color={targetColor} label="Target Color" showDetails={gameState === 'RESULT'} />
+              )}
               {gameState === 'SHOWING' && (
                 <div className="absolute -top-4 -right-4 bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg animate-pulse">
                   {timeLeft}
@@ -114,7 +125,7 @@ export const GameContainer: React.FC = () => {
                 <ColorDisplay color={userColor} label="Your Match" showDetails={gameState === 'RESULT'} />
                 
                 {gameState === 'MATCHING' ? (
-                  <ColorSliders color={userColor} onChange={setUserColor} />
+                  <ColorPicker color={userColor} onChange={setUserColor} />
                 ) : (
                   <div className="glass p-6 rounded-3xl text-center animate-slide-up w-full max-w-[280px]">
                     <p className="text-slate-400 text-sm font-bold uppercase mb-1">Round Score</p>
